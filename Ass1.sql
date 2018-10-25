@@ -1,17 +1,19 @@
 #initializing the db
 use sakila;
+
 # 1a
 select first_name, last_name from actor;
 #1b
 Alter table actor add `Actor Name` varchar(50);
 update actor set `Actor Name` = concat(first_name, " ", last_name);
 
+
 #2a
 select actor_id, first_name, last_name from actor where first_name = 'Joe';
 #2b
 select * from actor where last_name like '%GEN%';
 #2c
-select * from actor where last_name like '%LI%' group by last_name, first_name;
+select * from actor where last_name like '%LI%' order by last_name, first_name;
 #2d
 select * from country where country in ('Afghanistan','Bangladesh','China');
 
@@ -20,11 +22,13 @@ Alter table actor add Description blob;
 #3b
 Alter table actor drop column Description;
 
-#4a
-select distinct last_name, count(*) as 'Actors with same lastname'from actor group by last_name;
+#4a 
+select distinct last_name, count(*) as 'Count Of LastName'from actor group by last_name;
 #4b
 select last_name, first_name, count(*) from actor group by last_name 
 having count(*) >=2;
+
+
 #4c
 select * from actor where first_name = 'GROUCHO' and last_name='WILLIAMS';
 update actor set first_name='GROUCHO',`Actor Name` = 'HARPO WILLIAMS' where first_name = 'HARPO' and last_name='WILLIAMS';
@@ -53,11 +57,12 @@ update actor set first_name='GROUCHO',`Actor Name` = 'GROUCHO WILLIAMS' where fi
 #6a
 select * from staff;
 select * from address;
-select s.first_name, s.last_name, a.address from staff s
+select s.first_name as 'First Name', s.last_name as 'Last Name', a.address as 'Address' from staff s
 join address a on s.staff_id= a.address_id;
 #6b
 select * from payment where payment_date like '%2005-08%';
-select sum(p.amount), s.first_name, s.last_name, p.payment_date 
+select sum(p.amount) as 'Total Amount', 
+	s.first_name as 'First Name', s.last_name as 'Last Name', p.payment_date as 'Payment Date' 
 	from staff s inner join payment p on s.staff_id= p.staff_id 
     where p.payment_date like '%2005-08%'
     group by first_name;
@@ -66,11 +71,12 @@ select * from film;
 select * from actor;
 select f.title, count(a.`Actor Name`) as 'Number of Actors' from film f
 inner join actor a on f.film_id= a.actor_id group by title;
-#6d
-select * from inventory;
-select * from film where title='Hunchback Impossible';
-select count(inventory_id) as 'No of Films in Inventory' 
-	from inventory where( select film_id from film where title='Hunchback Impossible');
+
+#6d    
+select title, count(title) AS "Copies Count" from film
+	inner join inventory on film.film_id = inventory.film_id
+where title = "Hunchback Impossible";
+
 #6e
 select * from payment;
 select * from customer;
@@ -86,15 +92,21 @@ select title from film where ( title like 'K%' or title like 'Q%') and
 
 #7b
 select * from film where title='Alone Trip';
-select * from actor where actor_id=17;
-select count(`Actor Name`) from actor;
-select (select (`Actor Name`) from actor where actor_id=17) from film where title='Alone Trip';
+select first_name, last_name from actor
+	where actor_id IN 
+    (select actor_id FROM film_actor where film_id 
+			IN (select film_id from film where title = "Alone Trip") 
+			);
 
  
 #7c
-select c.email, c.first_name, c.last_name, cy.country from country cy
-	 Join customer c on c.customer_id=cy.country_id
-     group by first_name having country= 'Canada';
+select c.email, c.first_name, c.last_name, cy.country from customer c
+	 Join address ad on c.address_id=ad.address_id
+     Join city ct on ad.city_id = ct.city_id
+     Join country cy on ct.country_id = cy.country_id
+     where country= 'Canada';
+
+
 #7d
 -- select film_id, title, description, rating from film where rating= 'G';
 select f.film_id as 'film id', f.title as 'film title', a.name as 'film category', a.category_id as 'Family Category ID'
@@ -112,6 +124,7 @@ select title, count(rental_id) as "Rental Count" from rental
 SELECT staff.store_id AS 'Store', (SELECT SUM(payment.amount) FROM payment WHERE payment.staff_id = staff.staff_id) AS 'Total Sales Per Store'
 FROM staff
 GROUP BY staff.store_id;
+
 #7g
 select * from store;
 select * from city;
@@ -119,9 +132,9 @@ select * from address;
 select * from country;
 
 select st.store_id, ct.city, cy.country from city ct
-inner join country cy on ct.country_id = cy.country_id
-inner join address ad on ct.city_id = ad.city_id
-inner join store st on ad.city_id = st.address_id
+	inner join country cy on ct.country_id = cy.country_id
+	inner join address ad on ct.city_id = ad.city_id
+	inner join store st on ad.city_id = st.address_id
 group by st.store_id;
 
 #7h
@@ -129,10 +142,9 @@ select name, sum(amount) from category
 	inner join film_category on category.category_id = film_category.category_id
 	inner join inventory on film_category.film_id = inventory.film_id
 	inner join rental on inventory.inventory_id = rental.inventory_id
-JOIN payment
-ON rental.rental_id = payment.rental_id
-GROUP BY name
-ORDER BY SUM(amount) DESC LIMIT 5;
+	inner join payment on rental.rental_id = payment.rental_id
+group by name
+order by sum(amount) desc limit 5;
 
 #8a
 create view top5_genres_by_GrossRev AS
@@ -149,7 +161,6 @@ SELECT * FROM top5_genres_by_grossrev;
 
 #8c.
 DROP VIEW top5_genres_by_grossrev;
-
 
 
 
